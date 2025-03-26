@@ -6,7 +6,7 @@ import (
 )
 
 func TestStoreSetGet(t *testing.T) {
-	store := NewStore()
+	store := NewShardedStore()
 	store.Set("key1", "value1", 0)
 
 	val, found := store.Get("key1")
@@ -16,7 +16,7 @@ func TestStoreSetGet(t *testing.T) {
 }
 
 func TestStoreExpiration(t *testing.T) {
-	store := NewStore()
+	store := NewShardedStore()
 	store.Set("tempKey", "tempValue", 1)
 	time.Sleep(2 * time.Second)
 
@@ -27,7 +27,7 @@ func TestStoreExpiration(t *testing.T) {
 }
 
 func TestStoreDelete(t *testing.T) {
-	store := NewStore()
+	store := NewShardedStore()
 	store.Set("deleteKey", "value", 0)
 	store.Delete("deleteKey")
 

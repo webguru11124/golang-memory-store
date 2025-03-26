@@ -9,10 +9,10 @@ import (
 )
 
 type Handler struct {
-	store *core.Store
+	store *core.ShardedStore
 }
 
-func NewHandler(store *core.Store) *Handler {
+func NewHandler(store *core.ShardedStore) *Handler {
 	return &Handler{store: store}
 }
 

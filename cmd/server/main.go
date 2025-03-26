@@ -16,7 +16,11 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var EnablePersistence = os.Getenv("ENABLE_PERSISTENCE") == "true"
+var (
+	EnablePersistence = os.Getenv("ENABLE_PERSISTENCE") == "true"
+	UseDatabase       = os.Getenv("DB_TYPE") != ""
+	FILE_PATH         = "data.json"
+)
 
 func initDB() {
 	dbType := os.Getenv("DB_TYPE")
@@ -34,27 +38,27 @@ func initDB() {
 }
 
 func main() {
-	initDB()
-	store := core.NewStore()
+	store := core.NewShardedStore()
+	handler := api.NewHandler(store)
 
-	if !EnablePersistence {
-		log.Println("Persistence is disabled. Data will not be saved")
+	// Initialize Database if enabled
+	if UseDatabase {
+		initDB()
 	}
 
-	// Load data from file or DB based on environment variables
-	if os.Getenv("DB_TYPE") != "" {
+	// Load data from file or DB
+	if UseDatabase {
 		err := store.LoadStoreFromDB()
 		if err != nil {
 			log.Println("Error loading from DB:", err)
 		}
 	} else if EnablePersistence {
-		err := store.LoadStoreFromFile()
+		err := store.LoadStoreFromFile(FILE_PATH)
 		if err != nil {
 			log.Println("No previous data found, starting fresh.")
 		}
 	}
 
-	handler := api.NewHandler(store)
 	r := mux.NewRouter()
 
 	// Authentication Route
@@ -82,28 +86,28 @@ func main() {
 	apiRouter.HandleFunc("/list/push", handler.Push).Methods("POST")
 	apiRouter.HandleFunc("/list/pop/{key}", handler.Pop).Methods("POST")
 
+	// Start the server asynchronously
 	go func() {
 		log.Println("Server running on :8080")
-		log.Fatal(http.ListenAndServe(":8080", r))
+		if err := http.ListenAndServe(":8080", r); err != nil {
+			log.Fatal("Server failed:", err)
+		}
 	}()
 
-	// Graceful Shutdown - Save Data to File
+	// Graceful Shutdown Handling
 	signalChannel := make(chan os.Signal, 1)
 	signal.Notify(signalChannel, os.Interrupt, syscall.SIGTERM)
-	<-signalChannel
+
+	<-signalChannel // Block until an interrupt signal is received
 
 	log.Println("Shutting down the server and saving data...")
 
 	// Save data on shutdown
-	defer func() {
-		if os.Getenv("DB_TYPE") != "" {
-			store.SaveStoreToDB()
-		} else if EnablePersistence {
-			err := store.SaveStoreToFile()
-			if err != nil {
-				log.Println("Failed to save data:", err)
-			}
-			log.Println("Data saved successfully. Goodbye!")
-		}
-	}()
+	if UseDatabase {
+		store.SaveStoreToDBAsync()
+	} else if EnablePersistence {
+		store.SaveStoreToFileAsync(FILE_PATH)
+	}
+
+	log.Println("Data saved successfully. Goodbye!")
 }
