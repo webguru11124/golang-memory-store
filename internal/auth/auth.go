@@ -12,7 +12,7 @@ import (
 var secretKey []byte
 
 func init() {
-	err := godotenv.Load()
+	err := godotenv.Load("../../.env")
 	if err != nil {
 		panic("Error loading .env file")
 	}
@@ -35,6 +35,11 @@ func GenerateToken(username string) (string, error) {
 }
 
 func ValidateToken(tokenString string) (string, error) {
+	// Remove "Bearer " prefix if it exists
+	if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+		tokenString = tokenString[7:]
+	}
+
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("invalid signing method")

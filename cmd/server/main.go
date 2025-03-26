@@ -47,14 +47,7 @@ func main() {
 		if err != nil {
 			log.Println("Error loading from DB:", err)
 		}
-	} else {
-		err := store.LoadStoreFromFile()
-		if err != nil {
-			log.Println("Error loading from file:", err)
-		}
-	}
-
-	if EnablePersistence {
+	} else if EnablePersistence {
 		err := store.LoadStoreFromFile()
 		if err != nil {
 			log.Println("No previous data found, starting fresh.")
@@ -101,20 +94,16 @@ func main() {
 
 	log.Println("Shutting down the server and saving data...")
 
-	if EnablePersistence {
-		err := store.SaveStoreToFile()
-		if err != nil {
-			log.Println("Failed to save data:", err)
-		}
-		log.Println("Data saved successfully. Goodbye!")
-	}
-
 	// Save data on shutdown
 	defer func() {
 		if os.Getenv("DB_TYPE") != "" {
 			store.SaveStoreToDB()
-		} else {
-			store.SaveStoreToFile()
+		} else if EnablePersistence {
+			err := store.SaveStoreToFile()
+			if err != nil {
+				log.Println("Failed to save data:", err)
+			}
+			log.Println("Data saved successfully. Goodbye!")
 		}
 	}()
 }
